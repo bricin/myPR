@@ -15,13 +15,10 @@
   <section id="settings" class="settings-page" hidden aria-labelledby="settings-title">
     <div class="settings-heading"><button id="settings-back" class="secondary" type="button">Back to lifts</button><h1 id="settings-title" tabindex="-1">Settings</h1></div>
     <p>Records stay on this device first. Connect Google Sheets for sync, or save a backup in iCloud Drive.</p>
-    <form id="settings-form">
-      <label>Google OAuth client ID<input id="client-id" placeholder="…apps.googleusercontent.com" autocomplete="off"></label>
-      <label>Spreadsheet ID <span class="hint">Leave blank to create one on first sync</span><input id="sheet-id" autocomplete="off" placeholder="ID from your myPR spreadsheet URL"></label>
-      <p class="hint">Uses access to files created by this app. Use the same Google account and OAuth client on every device. Never enter a client secret.</p>
-      <button type="submit" class="secondary">Save connection settings</button>
-    </form>
-    <div class="actions"><button id="connect">Authorize Google & sync</button><button id="sync" class="secondary">Sync now</button><button id="disconnect" class="quiet">Disconnect</button></div>
+    <h2>Google Sheets</h2>
+    <p>Connect your Google account to keep your lift history in your own private spreadsheet. We’ll find your myPR sheet or create one for you.</p>
+    <p id="google-availability" class="hint" role="status">Google connection is not available yet. You can still log lifts and use file backups.</p>
+    <div class="actions"><button id="connect" disabled>Connect Google</button><button id="sync" class="secondary" hidden>Sync now</button><button id="disconnect" class="quiet" hidden>Disconnect</button></div>
     <a id="sheet-link" hidden target="_blank" rel="noopener noreferrer">Open spreadsheet</a>
     <hr><h3>iCloud Drive backup</h3><p class="hint">Save a JSON file to Files → iCloud Drive, then restore it on another device. This is a manual backup, not automatic iCloud sync. Backups contain your full history.</p>
     <div class="actions"><button id="backup" class="secondary">Save backup to Files</button><label class="file-button">Restore backup<input id="restore" type="file" accept=".json,application/json"></label></div>

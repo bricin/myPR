@@ -1,6 +1,7 @@
 import {estimate, rounded, liftKey, mergeRecords, parseBackup, validate, liftDate} from './core.js';
 import {loadRecords, storeRecords, loadPreferences, storePreferences} from './storage.js';
 import * as sheets from './sheets.js';
+import {GOOGLE_CLIENT_ID, googleConfigured} from './config.js';
 const $ = id => document.getElementById(id);
 let records = [], prefs = loadPreferences(), syncing = false, syncAgain = false, storageBroken = false;
 const fmt = n => new Intl.NumberFormat(undefined,{maximumFractionDigits:1}).format(n);
@@ -65,13 +66,13 @@ function previewEntry() {
 async function sync() {
   if(syncing) {syncAgain=true;return;}
   if(!navigator.onLine) return status('Offline · Records saved here. Sync when you’re connected.');
-  if(!sheets.authorized()) return status('Records saved on this device. Authorize Google in Settings to sync.');
-  syncing=true; $('sync').disabled=true; $('settings-form').querySelector('button').disabled=true;
+  if(!sheets.authorized()) return status('Records saved on this device. Connect Google in Settings to sync.');
+  syncing=true; $('sync').disabled=true; $('connect').disabled=true;
   const run=async()=>{
   const target=prefs.sheetId;
   try {
     status('Syncing with Google Sheets…');
-    if(!target) { prefs.sheetId=await sheets.createSpreadsheet();persistPrefs();$('sheet-id').value=prefs.sheetId;render(); }
+    if(!target) { prefs.sheetId=await sheets.createSpreadsheet();persistPrefs();render(); }
     const remote=await sheets.readSpreadsheet(prefs.sheetId);
     records=await storeRecords(remote); render();
     const remoteIDs=new Set(remote.map(r=>r.id)), pending=records.filter(r=>!remoteIDs.has(r.id));
@@ -81,7 +82,7 @@ async function sync() {
   } catch(error) { fail(error); }
   };
   try {if(navigator.locks)await navigator.locks.request('pr-pocket-sync',run);else await run();}
-  finally { syncing=false; $('sync').disabled=false; $('settings-form').querySelector('button').disabled=false;if(syncAgain){syncAgain=false;sync();} }
+  finally { syncing=false; $('sync').disabled=false; $('connect').disabled=!googleConfigured;if(syncAgain){syncAgain=false;sync();} }
 }
 const ANNOUNCEMENT = 'welcome-v1';
 $('announcement').hidden = prefs.dismissedAnnouncement === ANNOUNCEMENT;
@@ -99,7 +100,7 @@ function renderRoute() {
   window.scrollTo(0,0);
   if(settings) {
     $('settings-title').focus();
-    if(navigator.onLine)sheets.loadGoogle().catch(fail);
+    if(googleConfigured && navigator.onLine)prepareGoogle();
   }
 }
 $('settings-toggle').onclick=()=>{location.hash='settings';};
@@ -122,24 +123,43 @@ for(const id of ['formula','rounding','basis','selected-lift']) $(id).onchange=(
   try{persistPrefs();}catch(error){fail(error);}renderNumbers();renderHistory();previewEntry();
 };
 $('history-filter').onchange=renderHistory;
-$('settings-form').onsubmit=event=>{
-  event.preventDefault();
-  const clientId=$('client-id').value.trim(), sheetId=$('sheet-id').value.trim();
-  if(clientId && !/^[a-zA-Z0-9._-]+\.apps\.googleusercontent\.com$/.test(clientId)) return status('Enter a Google web OAuth client ID.',true);
-  if(sheetId && !/^[\w-]{15,200}$/.test(sheetId)) return status('Enter only the spreadsheet ID, not its full URL.',true);
-  const next={...prefs,clientId,sheetId};
-  try{storePreferences(next);prefs=next;sheets.disconnect();render();status('Connection settings saved. Authorize Google to sync.');}catch(error){fail(error);}
-};
-$('connect').onclick=async()=>{
-  if(!prefs.clientId) return status('Save your Google OAuth client ID in Settings first. Offline mode needs no setup.',true);
-  if(syncing) return;
-  if(!globalThis.google?.accounts?.oauth2) {
-    try{await sheets.loadGoogle();status('Google is ready. Tap Authorize Google & sync again to open its account chooser.');}catch(error){fail(error);} return;
+async function prepareGoogle() {
+  if(!googleConfigured)return;
+  $('connect').disabled=true;
+  $('google-availability').textContent='Loading Google connection…';
+  try {
+    await sheets.loadGoogle();
+    $('connect').disabled=false;
+    $('google-availability').textContent='Sign in with Google and approve access to your myPR spreadsheet. No extra account or setup needed.';
+  } catch(error) {
+    $('connect').disabled=false;
+    $('google-availability').textContent='Google could not load. Check your connection and try again.';
+    fail(error);
   }
-  try{await sheets.authorize(prefs.clientId);await sync();}catch(error){fail(error);}
+}
+$('connect').onclick=async()=>{
+  if(!googleConfigured)return;
+  if(syncing)return;
+  if(!navigator.onLine)return status('Connect to the internet to sign in with Google.');
+  if(!globalThis.google?.accounts?.oauth2){await prepareGoogle();return;}
+  $('connect').disabled=true;
+  try {
+    await sheets.authorize(GOOGLE_CLIENT_ID);
+    status('Finding your myPR spreadsheet…');
+    prefs.sheetId=await sheets.findSpreadsheet(prefs.sheetId)||'';
+    persistPrefs();
+    $('sync').hidden=false;$('disconnect').hidden=false;
+    $('connect').textContent='Reconnect Google';
+    await sync();
+  } catch(error){fail(error);}
+  finally{$('connect').disabled=false;}
 };
 $('sync').onclick=sync;
-$('disconnect').onclick=()=>{sheets.disconnect();status('Google disconnected on this device. Local records remain saved.');};
+$('disconnect').onclick=()=>{
+  sheets.disconnect();$('sync').hidden=true;$('disconnect').hidden=true;
+  $('connect').textContent='Connect Google';
+  status('Google disconnected on this device. Local records remain saved.');
+};
 $('backup').onclick=async()=>{
   try {
     const backup={format:'pr-pocket',version:1,exportedAt:new Date().toISOString(),records:loadRecords()};
@@ -157,11 +177,12 @@ $('restore').onchange=async()=>{
     const imported=parseBackup(await file.text()); records=await storeRecords(imported);render();status(`Backup merged · ${records.length} entries now on this device.`);if(sheets.authorized())await sync();
   }catch(error){fail(error);}finally{$('restore').value='';}
 };
-window.addEventListener('online',()=>{if(sheets.authorized())sync();else status('Back online · Authorize Google to sync, or keep tracking locally.');});
+window.addEventListener('online',()=>{if(sheets.authorized())sync();else status('Back online · Connect Google to sync, or keep tracking locally.');});
 window.addEventListener('offline',()=>status('Offline · Records save on this device.'));
 window.addEventListener('storage',()=>{try{records=loadRecords();render();}catch(error){fail(error);}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden && sheets.authorized())sync();});
 for(const key of ['formula','rounding','basis']) if([...$(key).options].some(o=>o.value===String(prefs[key]))) $(key).value=prefs[key];
-$('client-id').value=prefs.clientId||'';$('sheet-id').value=prefs.sheetId||'';
+$('connect').disabled=!googleConfigured;
+if(googleConfigured)$('google-availability').textContent='Connect Google to sync your private myPR spreadsheet.';
 try{records=loadRecords();render();}catch(error){storageBroken=true;fail(error);}
 if('serviceWorker' in navigator && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) navigator.serviceWorker.register('./sw.js').catch(()=>status('Offline installation is unavailable. Use HTTPS or localhost, then reload.',true));

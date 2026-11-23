@@ -25,22 +25,36 @@ export function authorize(clientId) {
     }).requestAccessToken({prompt:'select_account'});
   });
 }
-async function api(path, {method = 'GET', body} = {}) {
+async function api(path, {method = 'GET', body, base = 'https://sheets.googleapis.com/v4/spreadsheets'} = {}) {
   if (!authorized()) throw Error('Authorize Google again to sync. Your records are saved on this device.');
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 25000);
   try {
-    const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets' + path, {
+    const response = await fetch(base + path, {
       method, headers:{Authorization:'Bearer ' + token, ...(body ? {'Content-Type':'application/json'} : {})},
       ...(body ? {body:JSON.stringify(body)} : {}), signal:controller.signal, cache:'no-store'
     });
     if (response.status === 401) { disconnect(); throw Error('Google authorization expired. Authorize again to sync.'); }
-    if (!response.ok) throw Error(`Google Sheets returned ${response.status}. Check the spreadsheet ID, file access, and that the Sheets API is enabled. Your local records are safe.`);
+    if (!response.ok) throw Error(`Google returned ${response.status}. Please reconnect or try again later. Your local records are safe.`);
     return await response.json();
   } finally { clearTimeout(timeout); }
 }
+export async function findSpreadsheet(preferredId) {
+  const query = "trashed = false and mimeType = 'application/vnd.google-apps.spreadsheet' and (appProperties has { key='mypr' and value='v1' } or name = 'myPR' or name = 'PR Pocket')";
+  const params=new URLSearchParams({q:query,fields:'files(id,name,appProperties),nextPageToken',orderBy:'createdTime',pageSize:'100'});
+  let first;
+  do {
+    const data=await api('/files?'+params,{base:'https://www.googleapis.com/drive/v3'});
+    first ||= data.files?.[0]?.id;
+    const previous=data.files?.find(file=>file.id===preferredId);
+    if(previous)return previous.id;
+    if(!data.nextPageToken)return first||null;
+    params.set('pageToken',data.nextPageToken);
+  } while(true);
+}
 export async function createSpreadsheet() {
   const data = await api('', {method:'POST', body:{properties:{title:'myPR'}, sheets:[{properties:{title:'PRs'}}]}});
-  // Caller persists the new ID immediately, before writing its header.
+  // Tag the file for automatic discovery after sign-in on other devices.
+  await api('/files/' + encodeURIComponent(data.spreadsheetId) + '?fields=id', {method:'PATCH',base:'https://www.googleapis.com/drive/v3',body:{appProperties:{mypr:'v1'}}});
   return data.spreadsheetId;
 }
 const range = encodeURIComponent("'PRs'!A:G");

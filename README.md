@@ -18,7 +18,7 @@ Live app: **https://bricin.github.io/myPR/**
 
 GitHub Pages publishes directly from the root of `main`. `.nojekyll` keeps this a plain static site. Pushes to `main` publish automatically; no build command or npm server is needed online.
 
-For Google sync, add **`https://bricin.github.io`** (without `/myPR/`) to your OAuth client's Authorized JavaScript origins. Then enter your existing client ID in the hosted app's Settings. Browser storage is separate for the localhost preview and the hosted app; restore a backup or connect the same Google Sheet to bring your history across.
+For Google sync, add **`https://bricin.github.io`** (without `/myPR/`) to your OAuth client's Authorized JavaScript origins. The app uses the shared public client ID configured once by its owner in `config.js`. Browser storage is separate for the localhost preview and the hosted app; restore a backup or connect the same Google Sheet to bring your history across.
 
 ## Put it on your phone
 
@@ -28,21 +28,25 @@ The local server binds to your computer's loopback interface, so its localhost U
 
 Open the HTTPS URL once online. On iPhone, open in Safari and use Share → Add to Home Screen. On Android, use the browser's Install app / Add to Home screen menu. The app shell, calculations, history, and JSON backup/restore work offline after the service worker installs. Google authorization and sync require connectivity. Reload after the first visit before testing airplane mode.
 
-## Google Sheets setup (optional)
+## Google connection
 
-Only a **public OAuth client ID** is needed. No client secret, API key, service account, shared password, Apps Script deployment, or access token needs to be sent to anyone.
+Regular users open Settings, tap **Connect Google**, choose their Google account, and approve access. myPR finds their existing private spreadsheet or creates one automatically. No client IDs, spreadsheet IDs, extra accounts, or configuration forms are shown to users. On another device, connect the same Google account to find the same sheet. Drive access is limited to files this app creates or has been explicitly granted access to (`drive.file`).
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project and enable **Google Sheets API**.
-2. Configure Google Auth Platform / OAuth consent: set an app name and your contact email. For personal development choose External / Testing and add your own Google email as a test user (or Internal if appropriate for your Workspace organization).
-3. Add the scope `https://www.googleapis.com/auth/drive.file` under Data Access. This grants access to files this app creates or files explicitly granted to it, rather than every spreadsheet in your account.
-4. Create an OAuth client with type **Web application**. Add your exact deployment origin to **Authorized JavaScript origins**, e.g. `https://example.com`. For local preview also add `http://localhost:5173`. An origin has no path; Google does not accept arbitrary non-localhost HTTP origins. The token popup flow does not require an app redirect endpoint.
-5. Copy the client ID ending in `.apps.googleusercontent.com`. In myPR → Settings, paste it and save. Leave Spreadsheet ID empty for the first device.
-6. Tap **Authorize Google & sync** and consent. If the Google library was still loading, tap again when prompted. The app creates a private spreadsheet named **myPR**, with a **PRs** tab and a seven-column header. It saves the spreadsheet ID in Settings. Open spreadsheet lets you inspect it directly.
-7. On a second device use the **same OAuth client ID and same Google account**, then paste the first device's spreadsheet ID into Settings before authorizing. The ID is between `/d/` and `/edit` in its URL. It is not a secret. Pasting an arbitrary existing spreadsheet ID does not grant access under `drive.file`; use the spreadsheet this app created.
+### One-time app-owner setup
 
-Google may require testing-user configuration, renewed consent, organization approval, or verification for broader distribution. Testing mode is suitable for personal setup; review Google's publishing requirements if you distribute your OAuth application. If authorization fails, verify the origin, test user, API enablement, and browser popup/content-blocking settings. 403/404 usually means missing API permission, wrong account/client, or an inaccessible spreadsheet.
+Google requires every OAuth app to be registered. This is done once by the person hosting myPR, not by each user.
 
-The token stays in memory only, expires, and is discarded when the page closes. After expiry/relaunch, tap Authorize Google again. Saves automatically sync while the page is open, online, and authorized; reconnecting and returning to the app also triggers a sync. There is no unattended background sync or refresh-token server. Disconnect clears the in-memory token; revoke the app through your Google Account's third-party access settings to remove Google's grant entirely.
+1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project for myPR. Enable **Google Sheets API** and **Google Drive API** (Drive discovers the user's app-created sheet).
+2. Configure Google Auth Platform with the myPR name, owner/support email, audience, and required app URLs. Request `https://www.googleapis.com/auth/drive.file`. While in Testing, add yourself as a test user. Before general availability, set the appropriate publishing status and complete any requirements Google presents. Testing-user access is not public availability.
+3. Create a **Web application** OAuth client. Add **`https://bricin.github.io`** to Authorized JavaScript origins (no `/myPR/` path). For local development also add `http://localhost` and `http://localhost:5173`. The browser token-popup flow has no application redirect endpoint.
+4. Put the public client ID ending in `.apps.googleusercontent.com` in `GOOGLE_CLIENT_ID` in **config.js**, increment the cache version in **sw.js**, commit, and push. Never add a client secret or token. The same public ID is used for everyone visiting this deployment.
+5. Test Connect Google → approve → inspect Open spreadsheet, then sign in on another device to confirm discovery and sync.
+
+Until the owner configures the shared ID, Settings clearly says Google connection is not available and disables Connect Google. Offline tracking and file backups still work. The app never asks ordinary users to register with Google Cloud. A URL cannot substitute for an OAuth client ID.
+
+Access tokens stay in memory and are discarded at expiry/page close. Users reconnect when needed. Saves sync while the page is open, online, and authorized. Disconnect clears the in-memory token; users can revoke the grant through their Google Account's third-party access settings. No refresh-token server or unattended background sync is used.
+
+Google connection errors may be caused by an unauthorized origin, testing-only audience, disabled Sheets/Drive API, missing consent, or a popup/content blocker. Owner diagnostics belong in Cloud Console, not in the end-user setup flow.
 
 ### Sheet schema and sync behavior
 
@@ -56,7 +60,7 @@ Records have immutable UUIDs and UTC ISO creation timestamps. New entries also s
 
 Two independent devices can still append the same imported ID concurrently, or a late response after a timeout can cause a duplicate physical row. Reads collapse identical IDs, so app history remains deduplicated; conflicting contents for the same ID stop sync rather than overwriting data. This is an append-only personal log, not a transactional multi-user database. Do not rename the tab/header or edit/delete existing record rows. A missing tab or malformed row stops sync with an error. A completely empty `PRs` tab is initialized automatically. Removing a row from Sheets does not delete it locally; it will be reuploaded. Entry editing/deletion is intentionally outside this minimal version.
 
-New records added during sync schedule another pass. Records imported from Sheets are persisted locally before uploads. Records from different Google connections are not partitioned: changing the target spreadsheet intentionally syncs this device's entire history to the new target. Keep separate browser profiles for separate people's data. The sheet itself remains private unless you share it in Google.
+New records added during sync schedule another pass. Records imported from Sheets are persisted locally before uploads. Records from different Google connections are not partitioned: connecting another Google account intentionally syncs this device's entire history to that account's sheet. Keep separate browser profiles for separate people's data. The sheet itself remains private unless you share it in Google.
 
 ## iCloud Drive backup and restore
 
@@ -100,4 +104,4 @@ Official references: [Google token model](https://developers.google.com/identity
 
 ## Verification
 
-`npm test` covers formulas, rounding, invalid values, duplicate/conflicting imports, backup versions, durable merges, quota failures, corrupt storage, and mocked authenticated Sheets reads/writes and expiry. These tests do not prove live Google account consent or iCloud upload. Complete a live roundtrip after configuring your own OAuth client: save a lift → sync → see its row in Sheets → authorize on a second device → sync → see the same lift; test airplane-mode entry and reconnect as well. For backup, save to iCloud and restore the file on a second device.
+`npm test` covers formulas, rounding, invalid values, duplicate/conflicting imports, backup versions, durable merges, quota failures, corrupt storage, and mocked authenticated Sheets reads/writes and expiry. These tests do not prove live Google account consent or iCloud upload. Complete a live roundtrip after configuring your own OAuth client: save a lift → Connect Google → see its row in Sheets → connect the same Google account on a second device → see the same lift; test airplane-mode entry and reconnect as well. For backup, save to iCloud and restore the file on a second device.

@@ -26,3 +26,23 @@ test('legacy Sheets header adds only G1 without rewriting old records',async()=>
   assert.match(decodeURIComponent(calls[1].url),/PRs'!G1/);
   assert.deepEqual(JSON.parse(calls[1].opts.body),{values:[['performed_on']]});
 });
+
+test('Google connection discovers an existing app sheet and prefers the known one',async()=>{
+  await sheets.authorize('test-client');
+  globalThis.fetch=async(url)=>{
+    assert.match(url,/googleapis.com\/drive\/v3\/files/);
+    assert.match(decodeURIComponent(url),/mypr/);
+    return {ok:true,json:async()=>({files:[{id:'oldest'},{id:'previous'}]})};
+  };
+  assert.equal(await sheets.findSpreadsheet(),'oldest');
+  assert.equal(await sheets.findSpreadsheet('previous'),'previous');
+  globalThis.fetch=async()=>({ok:true,json:async()=>({files:[]})});
+  assert.equal(await sheets.findSpreadsheet(),null);
+});
+test('new spreadsheets are tagged for cross-device discovery',async()=>{
+  await sheets.authorize('test-client');const calls=[];
+  globalThis.fetch=async(url,opts)=>{calls.push({url,opts});return {ok:true,json:async()=>({spreadsheetId:'new-sheet'})};};
+  assert.equal(await sheets.createSpreadsheet(),'new-sheet');
+  assert.match(calls[1].url,/drive\/v3\/files\/new-sheet/);
+  assert.deepEqual(JSON.parse(calls[1].opts.body),{appProperties:{mypr:'v1'}});
+});
