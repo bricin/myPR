@@ -31,3 +31,19 @@ test('Sheets rows roundtrip; unexpected headers and corrupt rows fail closed',()
   assert.throws(()=>fromRows([HEADER,[r.id,'Squat','bad',1,1,r.createdAt]]));
   assert.equal(liftKey('  BACK squat  '),'back squat');
 });
+
+test('lift dates default to local today and reject invalid calendar dates',async()=>{
+  const {liftDate,localDate}=await import('../core.js');
+  const now=new Date(2026,10,23,23,30);
+  assert.equal(localDate(now),'2026-11-23');assert.equal(liftDate('',now),'2026-11-23');assert.equal(liftDate(undefined,now),'2026-11-23');
+  assert.equal(liftDate('2024-02-29'),'2024-02-29');
+  for(const date of ['2026-02-29','2026-02-30','2026-13-01','11/23/2026',null,123])assert.throws(()=>liftDate(date));
+});
+test('backdated entries sort by lift day and dates survive Sheets and backup roundtrips',async()=>{
+  const {LEGACY_HEADER}=await import('../core.js');
+  const backdated={...r,id:'backdated-record',performedOn:'2020-01-01',createdAt:'2026-11-24T12:00:00.000Z'};
+  assert.deepEqual(mergeRecords([r,backdated]),[backdated,r]);
+  assert.deepEqual(fromRows([HEADER,row(backdated)]),[backdated]);
+  assert.deepEqual(fromRows([LEGACY_HEADER,row(r).slice(0,6)]),[r]);
+  assert.deepEqual(parseBackup(JSON.stringify({format:'pr-pocket',version:1,records:[backdated,r]})),[backdated,r]);
+});

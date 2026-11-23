@@ -1,4 +1,4 @@
 {
-  "name": "pr-pocket", "version": "1.0.0", "private": true, "type": "module",
-  "scripts": {"start": "node tools/serve.mjs", "test": "node --test tests/*.test.mjs"}
+  "name": "mypr", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": {"start": "node --watch tools/serve.mjs", "test": "node --test tests/*.test.mjs"}
 }

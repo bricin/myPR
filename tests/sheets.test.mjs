@@ -16,3 +16,13 @@ test('expired credentials disconnect without swallowing errors',async()=>{
   await sheets.authorize('test-client');globalThis.fetch=async()=>({status:401,ok:false});
   await assert.rejects(sheets.readSpreadsheet('example-id'),/expired/);assert.equal(sheets.authorized(),false);
 });
+
+test('legacy Sheets header adds only G1 without rewriting old records',async()=>{
+  const {LEGACY_HEADER}=await import('../core.js');
+  await sheets.authorize('test-client');const calls=[];
+  globalThis.fetch=async(url,opts)=>{calls.push({url,opts});return {ok:true,json:async()=>opts.method==='GET'?{values:[LEGACY_HEADER,row(r).slice(0,6)]}:{}};};
+  assert.deepEqual(await sheets.readSpreadsheet('example-id'),[r]);
+  assert.equal(calls.length,2);assert.equal(calls[1].opts.method,'PUT');
+  assert.match(decodeURIComponent(calls[1].url),/PRs'!G1/);
+  assert.deepEqual(JSON.parse(calls[1].opts.body),{values:[['performed_on']]});
+});

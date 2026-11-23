@@ -1,4 +1,4 @@
-# PR Pocket
+# myPR
 
 A minimal, mobile-first, offline-friendly weightlifting PR PWA. Direct entry of lift, total weight in pounds, sets, and reps. No workouts, ads, analytics, app accounts, paid services, dependencies, or build step. Google authorization is optional until you want Sheets sync.
 
@@ -10,7 +10,7 @@ Install Node.js 20 or newer, open a terminal in this directory, and run:
 npm start
 ```
 
-Open **http://localhost:4173**. Save a lift immediately; no credentials needed. Run `npm test` for calculation, validation, merge, backup, storage-failure, and mocked Sheets API checks. Stop the server with Control-C.
+Open **http://localhost:5173**. Save a lift immediately; no credentials needed. The development server reloads the page automatically when app files change and restarts itself when server code changes. No manual npm restart is needed for normal edits. Unsaved form input resets on reload; saved lifts remain. Offline caching is disabled on localhost so changes appear immediately; test PWA offline behavior on an HTTPS deployment. Run `npm test` for calculation, validation, merge, backup, storage-failure, and mocked Sheets API checks. Stop the server with Control-C.
 
 ## Put it on your phone
 
@@ -27,9 +27,9 @@ Only a **public OAuth client ID** is needed. No client secret, API key, service 
 1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project and enable **Google Sheets API**.
 2. Configure Google Auth Platform / OAuth consent: set an app name and your contact email. For personal development choose External / Testing and add your own Google email as a test user (or Internal if appropriate for your Workspace organization).
 3. Add the scope `https://www.googleapis.com/auth/drive.file` under Data Access. This grants access to files this app creates or files explicitly granted to it, rather than every spreadsheet in your account.
-4. Create an OAuth client with type **Web application**. Add your exact deployment origin to **Authorized JavaScript origins**, e.g. `https://example.com`. For local preview also add `http://localhost:4173`. An origin has no path; Google does not accept arbitrary non-localhost HTTP origins. The token popup flow does not require an app redirect endpoint.
-5. Copy the client ID ending in `.apps.googleusercontent.com`. In PR Pocket → Settings, paste it and save. Leave Spreadsheet ID empty for the first device.
-6. Tap **Authorize Google & sync** and consent. If the Google library was still loading, tap again when prompted. The app creates a private spreadsheet named **PR Pocket**, with a **PRs** tab and a six-column header. It saves the spreadsheet ID in Settings. Open spreadsheet lets you inspect it directly.
+4. Create an OAuth client with type **Web application**. Add your exact deployment origin to **Authorized JavaScript origins**, e.g. `https://example.com`. For local preview also add `http://localhost:5173`. An origin has no path; Google does not accept arbitrary non-localhost HTTP origins. The token popup flow does not require an app redirect endpoint.
+5. Copy the client ID ending in `.apps.googleusercontent.com`. In myPR → Settings, paste it and save. Leave Spreadsheet ID empty for the first device.
+6. Tap **Authorize Google & sync** and consent. If the Google library was still loading, tap again when prompted. The app creates a private spreadsheet named **myPR**, with a **PRs** tab and a seven-column header. It saves the spreadsheet ID in Settings. Open spreadsheet lets you inspect it directly.
 7. On a second device use the **same OAuth client ID and same Google account**, then paste the first device's spreadsheet ID into Settings before authorizing. The ID is between `/d/` and `/edit` in its URL. It is not a secret. Pasting an arbitrary existing spreadsheet ID does not grant access under `drive.file`; use the spreadsheet this app created.
 
 Google may require testing-user configuration, renewed consent, organization approval, or verification for broader distribution. Testing mode is suitable for personal setup; review Google's publishing requirements if you distribute your OAuth application. If authorization fails, verify the origin, test user, API enablement, and browser popup/content-blocking settings. 403/404 usually means missing API permission, wrong account/client, or an inaccessible spreadsheet.
@@ -38,13 +38,13 @@ The token stays in memory only, expires, and is discarded when the page closes. 
 
 ### Sheet schema and sync behavior
 
-The `PRs!A:F` header must be exactly:
+The `PRs!A:G` header is:
 
 ```text
-id | lift | weight_lb | sets | reps | created_at
+id | lift | weight_lb | sets | reps | created_at | performed_on
 ```
 
-Records have immutable UUIDs and UTC ISO timestamps. Sync reads and validates all remote records, merges them into durable local storage, then appends locally missing IDs. Sheets writes use `RAW`, so lift names cannot execute as formulas. Local changes are saved before network calls. Failed or timed-out syncs can be retried; the next read checks IDs before uploading. Web Locks serialize saves and syncs among tabs on the same origin where supported. Use one tab on older browsers without Web Locks.
+Records have immutable UUIDs and UTC ISO creation timestamps. New entries also store `performed_on` as a local calendar date (`YYYY-MM-DD`), so a chosen date stays the same across time zones. Leave the optional Date field blank to use today on the device at save time. History and PR milestones use the lift date, so backdated entries appear in the right order. Existing six-column sheets are upgraded automatically by adding only the `performed_on` header in G1; legacy entries retain their original timestamp and remain compatible with old backups. Sync reads and validates all remote records, merges them into durable local storage, then appends locally missing IDs. Sheets writes use `RAW`, so lift names cannot execute as formulas. Local changes are saved before network calls. Failed or timed-out syncs can be retried; the next read checks IDs before uploading. Web Locks serialize saves and syncs among tabs on the same origin where supported. Use one tab on older browsers without Web Locks.
 
 Two independent devices can still append the same imported ID concurrently, or a late response after a timeout can cause a duplicate physical row. Reads collapse identical IDs, so app history remains deduplicated; conflicting contents for the same ID stop sync rather than overwriting data. This is an append-only personal log, not a transactional multi-user database. Do not rename the tab/header or edit/delete existing record rows. A missing tab or malformed row stops sync with an error. A completely empty `PRs` tab is initialized automatically. Removing a row from Sheets does not delete it locally; it will be reuploaded. Entry editing/deletion is intentionally outside this minimal version.
 
@@ -59,6 +59,14 @@ Browser storage is **not** synced by iCloud. This PWA cannot access CloudKit or 
 3. On another device, Settings → **Restore backup**, browse iCloud Drive, and choose that JSON file.
 
 Restore validates the entire backup, merges UUIDs, and does not duplicate existing entries. It does not replace or erase history. Canceling a save/share does not change records. The web app can report handing off a file but cannot verify that iCloud finished uploading it. Backups contain history only, not OAuth tokens or connection settings. Keep a separate copy before changing devices or clearing browser data. Native automatic iCloud sync would require an Apple developer/CloudKit setup or a native companion app; neither is needed here.
+
+## Settings
+
+Settings opens as its own screen at `#settings`, with a Back to lifts button and browser Back navigation. The lift form, headline, and history are hidden while settings is open.
+
+## Headline
+
+The welcome headline sits inside a shaded panel with a visible Dismiss button. Dismiss it to reclaim space. The choice is remembered on this device. Announcements have a version ID so a future announcement can appear independently of the dismissed welcome message.
 
 ## Calculations
 

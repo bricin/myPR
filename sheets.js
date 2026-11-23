@@ -1,4 +1,4 @@
-import {HEADER, fromRows, row} from './core.js';
+import {HEADER, LEGACY_HEADER, fromRows, row} from './core.js';
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 let token = null, expires = 0, scriptPromise;
 export const authorized = () => !!token && Date.now() < expires;
@@ -39,18 +39,22 @@ async function api(path, {method = 'GET', body} = {}) {
   } finally { clearTimeout(timeout); }
 }
 export async function createSpreadsheet() {
-  const data = await api('', {method:'POST', body:{properties:{title:'PR Pocket'}, sheets:[{properties:{title:'PRs'}}]}});
+  const data = await api('', {method:'POST', body:{properties:{title:'myPR'}, sheets:[{properties:{title:'PRs'}}]}});
   // Caller persists the new ID immediately, before writing its header.
   return data.spreadsheetId;
 }
-const range = encodeURIComponent("'PRs'!A:F");
+const range = encodeURIComponent("'PRs'!A:G");
 export async function readSpreadsheet(id) {
   const data = await api('/' + encodeURIComponent(id) + '/values/' + range);
   if (!data.values?.length) {
-    await api('/' + encodeURIComponent(id) + '/values/' + encodeURIComponent("'PRs'!A1:F1") + '?valueInputOption=RAW', {method:'PUT', body:{values:[HEADER]}});
+    await api('/' + encodeURIComponent(id) + '/values/' + encodeURIComponent("'PRs'!A1:G1") + '?valueInputOption=RAW', {method:'PUT', body:{values:[HEADER]}});
     return [];
   }
-  return fromRows(data.values);
+  const records = fromRows(data.values);
+  if (JSON.stringify(data.values[0]) === JSON.stringify(LEGACY_HEADER)) {
+    await api('/' + encodeURIComponent(id) + '/values/' + encodeURIComponent("'PRs'!G1") + '?valueInputOption=RAW', {method:'PUT', body:{values:[['performed_on']]}});
+  }
+  return records;
 }
 export async function appendRecords(id, records) {
   if (!records.length) return;

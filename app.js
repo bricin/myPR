@@ -1,4 +1,4 @@
-import {estimate, rounded, liftKey, mergeRecords, parseBackup, validate} from './core.js';
+import {estimate, rounded, liftKey, mergeRecords, parseBackup, validate, liftDate} from './core.js';
 import {loadRecords, storeRecords, loadPreferences, storePreferences} from './storage.js';
 import * as sheets from './sheets.js';
 const $ = id => document.getElementById(id);
@@ -50,7 +50,7 @@ function renderHistory() {
   if(!visible.length) { $('history').append(element('div','Your first entry starts here. Save a lift and build your own record book.','empty')); return; }
   for(const r of visible) {
     const item=element('article',undefined,'history-row'), left=element('div'), right=element('div');
-    left.append(element('h3',r.lift),element('p',new Date(r.createdAt).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})));
+    left.append(element('h3',r.lift),element('p',new Date(r.performedOn ? r.performedOn+'T12:00:00' : r.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})));
     milestones.get(r.id).forEach(b=>left.append(element('span',b,'badge')));
     right.append(element('div',`${fmt(r.weight)} lb · ${r.sets} × ${r.reps}`,'load'));
     const est=estimate(r.weight,r.reps,$('formula').value);
@@ -83,14 +83,33 @@ async function sync() {
   try {if(navigator.locks)await navigator.locks.request('pr-pocket-sync',run);else await run();}
   finally { syncing=false; $('sync').disabled=false; $('settings-form').querySelector('button').disabled=false;if(syncAgain){syncAgain=false;sync();} }
 }
-$('settings-toggle').onclick=()=>{
-  $('settings').hidden=!$('settings').hidden;$('settings-toggle').setAttribute('aria-expanded',String(!$('settings').hidden));
-  if(!$('settings').hidden && navigator.onLine) sheets.loadGoogle().catch(fail);
+const ANNOUNCEMENT = 'welcome-v1';
+$('announcement').hidden = prefs.dismissedAnnouncement === ANNOUNCEMENT;
+$('dismiss-announcement').onclick=()=>{
+  prefs.dismissedAnnouncement=ANNOUNCEMENT;
+  $('announcement').hidden=true;
+  $('lift').focus();
+  try{persistPrefs();}catch(error){fail(error);}
 };
+function renderRoute() {
+  const settings = location.hash === '#settings';
+  $('settings').hidden=!settings;
+  $('tracker-view').hidden=settings;
+  $('settings-toggle').hidden=settings;
+  window.scrollTo(0,0);
+  if(settings) {
+    $('settings-title').focus();
+    if(navigator.onLine)sheets.loadGoogle().catch(fail);
+  }
+}
+$('settings-toggle').onclick=()=>{location.hash='settings';};
+$('settings-back').onclick=()=>{location.hash='';};
+window.addEventListener('hashchange',renderRoute);
+renderRoute();
 $('entry-form').onsubmit=async event=>{
   event.preventDefault();if(storageBroken) return status('Cannot save while device storage is unreadable. Restore browser data first.',true);
   try {
-    const r=validate({id:crypto.randomUUID(),lift:$('lift').value,weight:Number($('weight').value),sets:Number($('sets').value),reps:Number($('reps').value),createdAt:new Date().toISOString()});
+    const r=validate({id:crypto.randomUUID(),lift:$('lift').value,weight:Number($('weight').value),sets:Number($('sets').value),reps:Number($('reps').value),createdAt:new Date().toISOString(),performedOn:liftDate($('lift-date').value)});
     records=await storeRecords([r]);prefs.selected=liftKey(r.lift);render();$('selected-lift').value=prefs.selected;renderNumbers();
     status(`Saved ${r.lift} · ${fmt(r.weight)} lb · ${r.sets} × ${r.reps} on this device.`);
     if(navigator.storage?.persist) navigator.storage.persist().catch(()=>{});
@@ -124,10 +143,10 @@ $('disconnect').onclick=()=>{sheets.disconnect();status('Google disconnected on 
 $('backup').onclick=async()=>{
   try {
     const backup={format:'pr-pocket',version:1,exportedAt:new Date().toISOString(),records:loadRecords()};
-    const name=`pr-pocket-${new Date().toISOString().slice(0,10)}.json`, contents=JSON.stringify(backup,null,2);
+    const name=`myPR-${new Date().toISOString().slice(0,10)}.json`, contents=JSON.stringify(backup,null,2);
     const file=new File([contents],name,{type:'application/json'});
-    if(navigator.canShare?.({files:[file]})) {await navigator.share({files:[file],title:'PR Pocket backup'});status('Backup shared. In Files, choose iCloud Drive to keep it in iCloud.');}
-    else if(window.showSaveFilePicker) {const handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'PR Pocket backup',accept:{'application/json':['.json']}}]});const writer=await handle.createWritable();await writer.write(contents);await writer.close();status('Backup file saved. Choose an iCloud Drive folder for iCloud backup.');}
+    if(navigator.canShare?.({files:[file]})) {await navigator.share({files:[file],title:'myPR backup'});status('Backup shared. In Files, choose iCloud Drive to keep it in iCloud.');}
+    else if(window.showSaveFilePicker) {const handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'myPR backup',accept:{'application/json':['.json']}}]});const writer=await handle.createWritable();await writer.write(contents);await writer.close();status('Backup file saved. Choose an iCloud Drive folder for iCloud backup.');}
     else {const url=URL.createObjectURL(file), a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);status('Backup download started. Move the JSON file to iCloud Drive using Files.');}
   }catch(error){if(error.name!=='AbortError')fail(error);}
 };
@@ -145,4 +164,4 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden && sheets.
 for(const key of ['formula','rounding','basis']) if([...$(key).options].some(o=>o.value===String(prefs[key]))) $(key).value=prefs[key];
 $('client-id').value=prefs.clientId||'';$('sheet-id').value=prefs.sheetId||'';
 try{records=loadRecords();render();}catch(error){storageBroken=true;fail(error);}
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>status('Offline installation is unavailable. Use HTTPS or localhost, then reload.',true));
+if('serviceWorker' in navigator && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) navigator.serviceWorker.register('./sw.js').catch(()=>status('Offline installation is unavailable. Use HTTPS or localhost, then reload.',true));

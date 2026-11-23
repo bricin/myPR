@@ -6,19 +6,18 @@
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="./style.css"><script type="module" src="./app.js"></script>
-  <title>PR Pocket</title>
+  <title>myPR</title>
 </head>
 <body>
 <main>
-  <header><a class="brand" href="./" aria-label="PR Pocket home"><span class="mark" aria-hidden="true">▰</span> PR POCKET</a><button id="settings-toggle" class="quiet" aria-expanded="false" aria-controls="settings">Settings</button></header>
-  <div class="intro"><span class="eyebrow">A LITTLE STRONGER, EVERY TIME.</span><h1>Keep your best<br>within reach.</h1><p>Just the lift and the numbers. No workout required.</p></div>
+  <header><a class="brand" href="./" aria-label="myPR home"><span class="mark" aria-hidden="true">▰</span> myPR</a><button id="settings-toggle" class="quiet" aria-controls="settings">Settings</button></header>
   <div id="status" class="status" role="status" aria-live="polite">Saved on this device · Google Sheets optional</div>
-  <section id="settings" class="card" hidden aria-labelledby="settings-title">
-    <h2 id="settings-title">Your data, your call.</h2>
+  <section id="settings" class="settings-page" hidden aria-labelledby="settings-title">
+    <div class="settings-heading"><button id="settings-back" class="secondary" type="button">Back to lifts</button><h1 id="settings-title" tabindex="-1">Settings</h1></div>
     <p>Records stay on this device first. Connect Google Sheets for sync, or save a backup in iCloud Drive.</p>
     <form id="settings-form">
       <label>Google OAuth client ID<input id="client-id" placeholder="…apps.googleusercontent.com" autocomplete="off"></label>
-      <label>Spreadsheet ID <span class="hint">Leave blank to create one on first sync</span><input id="sheet-id" autocomplete="off" placeholder="ID from your PR Pocket spreadsheet URL"></label>
+      <label>Spreadsheet ID <span class="hint">Leave blank to create one on first sync</span><input id="sheet-id" autocomplete="off" placeholder="ID from your myPR spreadsheet URL"></label>
       <p class="hint">Uses access to files created by this app. Use the same Google account and OAuth client on every device. Never enter a client secret.</p>
       <button type="submit" class="secondary">Save connection settings</button>
     </form>
@@ -29,12 +28,15 @@
     <p class="hint">Restore merges records without duplicating them. Browser storage can be cleared by your device; keep a backup or sync regularly.</p>
     <hr><h3>Install on your phone</h3><p class="hint">iPhone: Safari → Share → Add to Home Screen. Android: browser menu → Install app. Open once online before using offline. Google sync needs an internet connection.</p>
   </section>
+  <div id="tracker-view">
+  <div class="intro" id="announcement"><button id="dismiss-announcement" class="quiet" type="button" aria-label="Dismiss welcome panel">Dismiss</button><span class="eyebrow">A LITTLE STRONGER, EVERY TIME.</span><h1>Keep your best<br>within reach.</h1><p>Just the lift and the numbers. No workout required.</p></div>
   <div class="layout">
     <section class="card entry" aria-labelledby="entry-title"><div class="section-heading"><h2 id="entry-title">Log a lift</h2><span class="tag">LB</span></div>
       <form id="entry-form">
         <label>Lift<input id="lift" list="lifts" maxlength="60" required placeholder="e.g. Back squat" autocomplete="off"><datalist id="lifts"><option>Back squat</option><option>Bench press</option><option>Deadlift</option><option>Overhead press</option><option>Front squat</option></datalist></label>
         <label>Weight <span class="hint">lb · total weight</span><input id="weight" type="number" inputmode="decimal" min="0.01" max="10000" step="any" required placeholder="225"></label>
         <div class="split"><label>Sets<input id="sets" type="number" inputmode="numeric" min="1" max="100" step="1" value="1" required></label><label>Reps<input id="reps" type="number" inputmode="numeric" min="1" max="100" step="1" value="1" required></label></div>
+        <label>Date <span class="hint">optional · defaults to today</span><input id="lift-date" type="date"></label>
         <p id="entry-preview" class="hint">One rep records an actual 1RM. Estimates use 2–10 reps.</p>
         <button class="primary" type="submit">Save lift</button>
       </form>
@@ -50,5 +52,6 @@
   </div>
   <section class="card history" aria-labelledby="history-title"><div class="section-heading"><h2 id="history-title">The record book</h2><select id="history-filter" aria-label="Filter history"><option value="">All lifts</option></select></div><p class="hint">Every entry, with record-setting lifts marked. Formula changes recalculate estimated PRs.</p><div id="history"></div></section>
   <footer>Built for the lift. Nothing extra.<span>Offline first · No ads</span></footer>
+  </div>
 </main>
 </body></html>
