@@ -12,6 +12,14 @@ npm start
 
 Open **http://localhost:5173**. Save a lift immediately; no credentials needed. The development server reloads the page automatically when app files change and restarts itself when server code changes. No manual npm restart is needed for normal edits. Unsaved form input resets on reload; saved lifts remain. Offline caching is disabled on localhost so changes appear immediately; test PWA offline behavior on an HTTPS deployment. Run `npm test` for calculation, validation, merge, backup, storage-failure, and mocked Sheets API checks. Stop the server with Control-C.
 
+## GitHub Pages
+
+Live app: **https://bricin.github.io/myPR/**
+
+GitHub Pages publishes directly from the root of `main`. `.nojekyll` keeps this a plain static site. Pushes to `main` publish automatically; no build command or npm server is needed online.
+
+For Google sync, add **`https://bricin.github.io`** (without `/myPR/`) to your OAuth client's Authorized JavaScript origins. Then enter your existing client ID in the hosted app's Settings. Browser storage is separate for the localhost preview and the hosted app; restore a backup or connect the same Google Sheet to bring your history across.
+
 ## Put it on your phone
 
 Deploy the files in this directory to an HTTPS static host (for example GitHub Pages, Netlify, Cloudflare Pages, or an existing web server). No install or build command is needed. The publish directory is this directory, containing `index.html`. `tools/` and `tests/` are only for local development and can be omitted. Subdirectory hosting works. Do not open `index.html` as a `file://` URL.
