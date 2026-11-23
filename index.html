@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#102c29"><meta name="description" content="Your lifts. Your numbers. A private, offline-friendly PR tracker.">
+  <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./style.css"><script type="module" src="./app.js"></script>
+  <title>PR Pocket</title>
+</head>
+<body>
+<main>
+  <header><a class="brand" href="./" aria-label="PR Pocket home"><span class="mark" aria-hidden="true">▰</span> PR POCKET</a><button id="settings-toggle" class="quiet" aria-expanded="false" aria-controls="settings">Settings</button></header>
+  <div class="intro"><span class="eyebrow">A LITTLE STRONGER, EVERY TIME.</span><h1>Keep your best<br>within reach.</h1><p>Just the lift and the numbers. No workout required.</p></div>
+  <div id="status" class="status" role="status" aria-live="polite">Saved on this device · Google Sheets optional</div>
+  <section id="settings" class="card" hidden aria-labelledby="settings-title">
+    <h2 id="settings-title">Your data, your call.</h2>
+    <p>Records stay on this device first. Connect Google Sheets for sync, or save a backup in iCloud Drive.</p>
+    <form id="settings-form">
+      <label>Google OAuth client ID<input id="client-id" placeholder="…apps.googleusercontent.com" autocomplete="off"></label>
+      <label>Spreadsheet ID <span class="hint">Leave blank to create one on first sync</span><input id="sheet-id" autocomplete="off" placeholder="ID from your PR Pocket spreadsheet URL"></label>
+      <p class="hint">Uses access to files created by this app. Use the same Google account and OAuth client on every device. Never enter a client secret.</p>
+      <button type="submit" class="secondary">Save connection settings</button>
+    </form>
+    <div class="actions"><button id="connect">Authorize Google & sync</button><button id="sync" class="secondary">Sync now</button><button id="disconnect" class="quiet">Disconnect</button></div>
+    <a id="sheet-link" hidden target="_blank" rel="noopener noreferrer">Open spreadsheet</a>
+    <hr><h3>iCloud Drive backup</h3><p class="hint">Save a JSON file to Files → iCloud Drive, then restore it on another device. This is a manual backup, not automatic iCloud sync. Backups contain your full history.</p>
+    <div class="actions"><button id="backup" class="secondary">Save backup to Files</button><label class="file-button">Restore backup<input id="restore" type="file" accept=".json,application/json"></label></div>
+    <p class="hint">Restore merges records without duplicating them. Browser storage can be cleared by your device; keep a backup or sync regularly.</p>
+    <hr><h3>Install on your phone</h3><p class="hint">iPhone: Safari → Share → Add to Home Screen. Android: browser menu → Install app. Open once online before using offline. Google sync needs an internet connection.</p>
+  </section>
+  <div class="layout">
+    <section class="card entry" aria-labelledby="entry-title"><div class="section-heading"><h2 id="entry-title">Log a lift</h2><span class="tag">LB</span></div>
+      <form id="entry-form">
+        <label>Lift<input id="lift" list="lifts" maxlength="60" required placeholder="e.g. Back squat" autocomplete="off"><datalist id="lifts"><option>Back squat</option><option>Bench press</option><option>Deadlift</option><option>Overhead press</option><option>Front squat</option></datalist></label>
+        <label>Weight <span class="hint">lb · total weight</span><input id="weight" type="number" inputmode="decimal" min="0.01" max="10000" step="any" required placeholder="225"></label>
+        <div class="split"><label>Sets<input id="sets" type="number" inputmode="numeric" min="1" max="100" step="1" value="1" required></label><label>Reps<input id="reps" type="number" inputmode="numeric" min="1" max="100" step="1" value="1" required></label></div>
+        <p id="entry-preview" class="hint">One rep records an actual 1RM. Estimates use 2–10 reps.</p>
+        <button class="primary" type="submit">Save lift</button>
+      </form>
+    </section>
+    <section class="card numbers" aria-labelledby="numbers-title"><div class="section-heading"><h2 id="numbers-title">Your numbers</h2><span class="tag">1RM</span></div>
+      <label>Lift<select id="selected-lift"><option value="">No lifts yet</option></select></label>
+      <div class="metrics"><div><span class="hint">ACTUAL BEST</span><strong id="actual">—</strong><span class="hint">1 rep · lb</span></div><div><span class="hint">ESTIMATED BEST</span><strong id="estimated">—</strong><span class="hint">2–10 reps · lb</span></div></div>
+      <div class="split"><label>Formula<select id="formula"><option value="epley">Epley</option><option value="brzycki">Brzycki</option></select></label><label>Round to<select id="rounding"><option value="2.5">2.5 lb</option><option value="5">5 lb</option><option value="10">10 lb</option></select></label></div>
+      <label>Percentage basis<select id="basis"><option value="actual">Actual 1RM</option><option value="estimated">Estimated 1RM</option></select></label>
+      <p id="basis-note" class="hint"></p><div id="percentages" class="percentages"></div>
+      <p class="hint">Rounding applies to total bar weight, to the nearest increment (ties up). Sets do not multiply the 1RM estimate.</p>
+    </section>
+  </div>
+  <section class="card history" aria-labelledby="history-title"><div class="section-heading"><h2 id="history-title">The record book</h2><select id="history-filter" aria-label="Filter history"><option value="">All lifts</option></select></div><p class="hint">Every entry, with record-setting lifts marked. Formula changes recalculate estimated PRs.</p><div id="history"></div></section>
+  <footer>Built for the lift. Nothing extra.<span>Offline first · No ads</span></footer>
+</main>
+</body></html>
