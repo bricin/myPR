@@ -160,4 +160,18 @@ let renderedDay=localDate();
 setInterval(()=>{const today=localDate();if(!document.hidden&&today!==renderedDay){renderedDay=today;renderNumbers();renderHistory();}},60000);
 for(const key of ['formula','rounding','basis']) if([...$(key).options].some(o=>o.value===String(prefs[key]))) $(key).value=prefs[key];
 try{records=loadRecords();render();}catch(error){storageBroken=true;fail(error);}
-if('serviceWorker' in navigator && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) navigator.serviceWorker.register('./sw.js').catch(()=>status('Offline installation is unavailable. Use HTTPS or localhost, then reload.',true));
+$('reload-app').onclick=()=>location.reload();
+let checkForAppUpdate=()=>{};
+if('serviceWorker' in navigator && !['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {
+  const alreadyControlled=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(alreadyControlled)$('app-update').hidden=false;
+  });
+  navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(registration=>{
+    let lastCheck=Date.now();
+    checkForAppUpdate=()=>{
+      if(navigator.onLine&&Date.now()-lastCheck>60000){lastCheck=Date.now();registration.update().catch(()=>{});}
+    };
+  }).catch(()=>status('Offline installation is unavailable. Use HTTPS, then reload.',true));
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkForAppUpdate();});

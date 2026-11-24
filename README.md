@@ -56,7 +56,7 @@ History is stored in one atomic localStorage document. Web Locks serialize saves
 
 History and backup files are plaintext. There are no external scripts, account connections, remote data writes, or telemetry. Serve over HTTPS. Cloud storage decisions are deferred while the UI is developed.
 
-The service worker caches the app shell. Increment CACHE in sw.js for changes and publish files together. After a new worker installs, close all app windows/tabs and reopen to activate it. Updating the app shell doesn't clear saved history.
+The service worker caches the app shell. Increment CACHE in sw.js for changes and publish files together. A new worker downloads fresh shell files and activates without waiting for every tab to close. Existing versions with update support show an Update ready notice and Reload app button, allowing you to save unfinished form input first. Versions 1–5 receive a one-time automatic page refresh when upgrading because those pages lack an update notice. Returning to the app also checks for updates. Updating the app shell never clears saved lift history or preferences.
 
 ## Verification
 
