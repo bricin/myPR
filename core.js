@@ -1,5 +1,3 @@
-export const LEGACY_HEADER = ['id', 'lift', 'weight_lb', 'sets', 'reps', 'created_at'];
-export const HEADER = [...LEGACY_HEADER, 'performed_on'];
 export function localDate(now = new Date()) {
   return `${now.getFullYear().toString().padStart(4,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 }
@@ -32,18 +30,41 @@ export function mergeRecords(...groups) {
   const byId = new Map();
   for (const group of groups) for (const input of group) {
     const r = validate(input), old = byId.get(r.id);
-    if (old && JSON.stringify(old) !== JSON.stringify(r)) throw Error('Conflicting data for record ' + r.id + '. Restore a separate backup or resolve the row in Sheets.');
+    if (old && JSON.stringify(old) !== JSON.stringify(r)) throw Error('Conflicting data for record ' + r.id + '. Restore a separate backup or resolve the conflicting backup record.');
     byId.set(r.id, r);
   }
   return [...byId.values()].sort((a,b) => recordDay(a).localeCompare(recordDay(b)) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }
-export function row(record) { const r = validate(record); return [r.id, r.lift, r.weight, r.sets, r.reps, r.createdAt, r.performedOn || '']; }
-export function fromRows(rows) {
-  if (!Array.isArray(rows) || ![HEADER, LEGACY_HEADER].some(header => JSON.stringify(rows[0]) === JSON.stringify(header))) throw Error('The PRs tab has an unexpected header. See README; no data was overwritten.');
-  return mergeRecords(rows.slice(1).filter(r => r.some(v => v !== '')).map(r => ({id:r[0], lift:r[1], weight:Number(r[2]), sets:Number(r[3]), reps:Number(r[4]), createdAt:r[5], ...(r[6] ? {performedOn:r[6]} : {})})));
-}
 export function parseBackup(text) {
   const data = JSON.parse(text);
-  if (data?.format !== 'pr-pocket' || data.version !== 1 || !Array.isArray(data.records)) throw Error('Choose a PR Pocket v1 JSON backup.');
+  if (data?.format !== 'pr-pocket' || data.version !== 1 || !Array.isArray(data.records)) throw Error('Choose a myPR v1 JSON backup.');
   return mergeRecords(data.records);
+}
+
+export const DEFAULT_RECENT_DAYS = 365;
+export function recentDays(value) {
+  const days=Number(value);
+  if(!Number.isInteger(days)||days<1||days>3650)throw Error('Recent window must be a whole number from 1 to 3,650 days.');
+  return days;
+}
+export function recentRecords(records, days=DEFAULT_RECENT_DAYS, now=new Date()) {
+  recentDays(days);
+  // Compare calendar days in UTC after deriving the device's local today.
+  // This avoids daylight-saving changes creating 23/25-hour boundary errors.
+  const today=localDate(now), end=Date.parse(today+'T00:00:00Z');
+  const start=end-(days-1)*86400000;
+  return records.filter(record=>{
+    const date=Date.parse(recordDay(record)+'T00:00:00Z');
+    return date>=start && date<=end;
+  });
+}
+export function recentSummary(records, {days=DEFAULT_RECENT_DAYS,formula='epley',reps=1,now=new Date()}={}) {
+  const recent=recentRecords(records,days,now);
+  let oneRM=null,pr=null;
+  for(const record of recent) {
+    const value=estimate(record.weight,record.reps,formula);
+    if(value!==null && (!oneRM||value>oneRM.value||(value===oneRM.value&&recordDay(record)>recordDay(oneRM.record))))oneRM={value,record};
+    if(record.reps===reps && (!pr||record.weight>pr.weight||(record.weight===pr.weight&&recordDay(record)>recordDay(pr))))pr=record;
+  }
+  return {oneRM,pr,records:recent};
 }

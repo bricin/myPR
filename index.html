@@ -11,19 +11,20 @@
 <body>
 <main>
   <header><a class="brand" href="./" aria-label="myPR home"><span class="mark" aria-hidden="true">▰</span> myPR</a><button id="settings-toggle" class="quiet" aria-controls="settings">Settings</button></header>
-  <div id="status" class="status" role="status" aria-live="polite">Saved on this device · Google Sheets optional</div>
+  <div id="status" class="status" role="status" aria-live="polite">Saved on this device</div>
   <section id="settings" class="settings-page" hidden aria-labelledby="settings-title">
     <div class="settings-heading"><button id="settings-back" class="secondary" type="button">Back to lifts</button><h1 id="settings-title" tabindex="-1">Settings</h1></div>
-    <p>Records stay on this device first. Connect Google Sheets for sync, or save a backup in iCloud Drive.</p>
-    <h2>Google Sheets</h2>
-    <p>Connect your Google account to keep your lift history in your own private spreadsheet. We’ll find your myPR sheet or create one for you.</p>
-    <p id="google-availability" class="hint" role="status">Google connection is not available yet. You can still log lifts and use file backups.</p>
-    <div class="actions"><button id="connect" disabled>Connect Google</button><button id="sync" class="secondary" hidden>Sync now</button><button id="disconnect" class="quiet" hidden>Disconnect</button></div>
-    <a id="sheet-link" hidden target="_blank" rel="noopener noreferrer">Open spreadsheet</a>
+    <p>Records are saved on this device. Save a file backup to keep a copy or move your history to another device.</p>
+    <form id="recent-settings-form" class="settings-group">
+      <h2>Recent records</h2>
+      <label>Recent window <span class="hint">days</span><input id="recent-days" type="number" inputmode="numeric" min="1" max="3650" step="1" value="365" required aria-describedby="recent-days-help"></label>
+      <p id="recent-days-help" class="hint">Today and the preceding days, up to this total. Applies to Recent 1RM, Recent PR, and recent percentage calculations. All-time records stay unchanged.</p>
+      <button type="submit" class="secondary">Save recent window</button>
+    </form>
     <hr><h3>iCloud Drive backup</h3><p class="hint">Save a JSON file to Files → iCloud Drive, then restore it on another device. This is a manual backup, not automatic iCloud sync. Backups contain your full history.</p>
     <div class="actions"><button id="backup" class="secondary">Save backup to Files</button><label class="file-button">Restore backup<input id="restore" type="file" accept=".json,application/json"></label></div>
-    <p class="hint">Restore merges records without duplicating them. Browser storage can be cleared by your device; keep a backup or sync regularly.</p>
-    <hr><h3>Install on your phone</h3><p class="hint">iPhone: Safari → Share → Add to Home Screen. Android: browser menu → Install app. Open once online before using offline. Google sync needs an internet connection.</p>
+    <p class="hint">Restore merges records without duplicating them. Browser storage can be cleared by your device; save a backup regularly.</p>
+    <hr><h3>Install on your phone</h3><p class="hint">iPhone: Safari → Share → Add to Home Screen. Android: browser menu → Install app. Open once online before using offline.</p>
   </section>
   <div id="tracker-view">
   <div class="intro" id="announcement"><button id="dismiss-announcement" class="quiet" type="button" aria-label="Dismiss welcome panel">Dismiss</button><span class="eyebrow">A LITTLE STRONGER, EVERY TIME.</span><h1>Keep your best<br>within reach.</h1><p>Just the lift and the numbers. No workout required.</p></div>
@@ -40,14 +41,14 @@
     </section>
     <section class="card numbers" aria-labelledby="numbers-title"><div class="section-heading"><h2 id="numbers-title">Your numbers</h2><span class="tag">1RM</span></div>
       <label>Lift<select id="selected-lift"><option value="">No lifts yet</option></select></label>
-      <div class="metrics"><div><span class="hint">ACTUAL BEST</span><strong id="actual">—</strong><span class="hint">1 rep · lb</span></div><div><span class="hint">ESTIMATED BEST</span><strong id="estimated">—</strong><span class="hint">2–10 reps · lb</span></div></div>
+      <div class="metrics"><div><span class="hint">ALL-TIME ACTUAL</span><strong id="actual">—</strong><span class="hint">1 rep · lb</span></div><div><span class="hint">ALL-TIME ESTIMATED</span><strong id="estimated">—</strong><span class="hint">2–10 reps · lb</span></div></div>
       <div class="split"><label>Formula<select id="formula"><option value="epley">Epley</option><option value="brzycki">Brzycki</option></select></label><label>Round to<select id="rounding"><option value="2.5">2.5 lb</option><option value="5">5 lb</option><option value="10">10 lb</option></select></label></div>
-      <label>Percentage basis<select id="basis"><option value="actual">Actual 1RM</option><option value="estimated">Estimated 1RM</option></select></label>
+      <label>Percentage basis<select id="basis"><option value="recent">Recent 1RM</option><option value="actual">All-time actual 1RM</option><option value="estimated">All-time estimated 1RM</option></select></label>
       <p id="basis-note" class="hint"></p><div id="percentages" class="percentages"></div>
       <p class="hint">Rounding applies to total bar weight, to the nearest increment (ties up). Sets do not multiply the 1RM estimate.</p>
     </section>
   </div>
-  <section class="card history" aria-labelledby="history-title"><div class="section-heading"><h2 id="history-title">The record book</h2><select id="history-filter" aria-label="Filter history"><option value="">All lifts</option></select></div><p class="hint">Every entry, with record-setting lifts marked. Formula changes recalculate estimated PRs.</p><div id="history"></div></section>
+  <section class="card history" aria-labelledby="history-title"><div class="section-heading"><h2 id="history-title">The record book</h2><select id="history-filter" aria-label="Filter history"><option value="">All lifts</option></select></div><p id="recent-window-note" class="hint"></p><div id="recent-records" class="recent-records"></div><p class="hint">Full history · All-time record-setting lifts are marked. Formula changes recalculate estimated PRs.</p><div id="history"></div></section>
   <footer>Built for the lift. Nothing extra.<span>Offline first · No ads</span></footer>
   </div>
 </main>

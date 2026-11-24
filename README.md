@@ -1,84 +1,38 @@
 # myPR
 
-A minimal, mobile-first, offline-friendly weightlifting PR PWA. Direct entry of lift, total weight in pounds, sets, and reps. No workouts, ads, analytics, app accounts, paid services, dependencies, or build step. Google authorization is optional until you want Sheets sync.
+A minimal, mobile-first, offline-friendly lifting PR tracker. Direct entry of lift, weight in pounds, sets, reps, and an optional date. No workouts, ads, analytics, accounts, cloud integrations, dependencies, or build step. History stays on the device; JSON files provide portable backups.
 
 ## Run locally
 
-Install Node.js 20 or newer, open a terminal in this directory, and run:
+Use Node.js 20 or newer, then run:
 
 ```sh
 npm start
 ```
 
-Open **http://localhost:5173**. Save a lift immediately; no credentials needed. The development server reloads the page automatically when app files change and restarts itself when server code changes. No manual npm restart is needed for normal edits. Unsaved form input resets on reload; saved lifts remain. Offline caching is disabled on localhost so changes appear immediately; test PWA offline behavior on an HTTPS deployment. Run `npm test` for calculation, validation, merge, backup, storage-failure, and mocked Sheets API checks. Stop the server with Control-C.
+Open **http://localhost:5173**. Changes to app files reload the preview automatically; server changes restart it. Unsaved form input resets on reload, while saved lifts remain. Offline caching is disabled on localhost so changes appear immediately. Run `npm test` for calculation, date, recent-window, merge, backup, and storage-failure checks. Stop the server with Control-C.
 
-## GitHub Pages
+## Hosting and installation
 
 Live app: **https://bricin.github.io/myPR/**
 
-GitHub Pages publishes directly from the root of `main`. `.nojekyll` keeps this a plain static site. Pushes to `main` publish automatically; no build command or npm server is needed online.
+GitHub Pages publishes from the root of `main`. `.nojekyll` makes it a plain static site, with no build step or online npm server. Pushes to `main` publish automatically. Other HTTPS static hosts work too; deploy the root app files. `tools/` and `tests/` are only for development. Subdirectory hosting is supported. Never publish personal backup files.
 
-For Google sync, add **`https://bricin.github.io`** (without `/myPR/`) to your OAuth client's Authorized JavaScript origins. The app uses the shared public client ID configured once by its owner in `config.js`. Browser storage is separate for the localhost preview and the hosted app; restore a backup or connect the same Google Sheet to bring your history across.
+The local preview is accessible only from your computer. A phone needs the HTTPS URL. Open it once online, then install through Safari → Share → Add to Home Screen on iPhone, or the browser's Install app menu on Android. The installed app works offline after its initial cache completes. Do not open index.html through a file:// URL.
 
-## Put it on your phone
+Localhost and the hosted app have separate browser storage. Move history with a backup. An installed PWA and a browser tab can also have separate storage on some platforms.
 
-Deploy the files in this directory to an HTTPS static host (for example GitHub Pages, Netlify, Cloudflare Pages, or an existing web server). No install or build command is needed. The publish directory is this directory, containing `index.html`. `tools/` and `tests/` are only for local development and can be omitted. Subdirectory hosting works. Do not open `index.html` as a `file://` URL.
+## Settings and welcome panel
 
-The local server binds to your computer's loopback interface, so its localhost URL is for desktop preview. A phone needs the HTTPS deployment URL. Do not put personal backups in your hosted source directory.
+Settings has its own screen at `#settings`, with Back to lifts and browser Back navigation. The shaded welcome panel has a Dismiss button, remembered on this device. Future announcements can use a new announcement ID without restoring a dismissed welcome message.
 
-Open the HTTPS URL once online. On iPhone, open in Safari and use Share → Add to Home Screen. On Android, use the browser's Install app / Add to Home screen menu. The app shell, calculations, history, and JSON backup/restore work offline after the service worker installs. Google authorization and sync require connectivity. Reload after the first visit before testing airplane mode.
+## Recent records
 
-## Google connection
+Settings → Recent records → Recent window controls a rolling calendar-day window, default **365 days**. Allowed values are 1–3,650 whole days; the preference is stored on each device. A 365-day window includes today and the preceding 364 dates. Future-dated entries are excluded from recent metrics. The performed-on date is used, with the local creation date as the fallback for old entries.
 
-Regular users open Settings, tap **Connect Google**, choose their Google account, and approve access. myPR finds their existing private spreadsheet or creates one automatically. No client IDs, spreadsheet IDs, extra accounts, or configuration forms are shown to users. On another device, connect the same Google account to find the same sheet. Drive access is limited to files this app creates or has been explicitly granted access to (`drive.file`).
+The record book shows **Recent 1RM** (the highest actual single or Epley/Brzycki estimate from 2–10 reps in that window) and **Recent PR** (the heaviest performed lift at the selected rep count). Each number shows its source lift/date. Select the PR rep count independently for each lift; when first shown it defaults to the lowest recent rep count. Higher-rep performances can earn rep PRs without contributing a 1RM estimate. Ties use the most recent lift date. Missing recent data shows an empty state, never an old all-time fallback. The history filter applies to recent summaries too.
 
-### One-time app-owner setup
-
-Google requires every OAuth app to be registered. This is done once by the person hosting myPR, not by each user.
-
-1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project for myPR. Enable **Google Sheets API** and **Google Drive API** (Drive discovers the user's app-created sheet).
-2. Configure Google Auth Platform with the myPR name, owner/support email, audience, and required app URLs. Request `https://www.googleapis.com/auth/drive.file`. While in Testing, add yourself as a test user. Before general availability, set the appropriate publishing status and complete any requirements Google presents. Testing-user access is not public availability.
-3. Create a **Web application** OAuth client. Add **`https://bricin.github.io`** to Authorized JavaScript origins (no `/myPR/` path). For local development also add `http://localhost` and `http://localhost:5173`. The browser token-popup flow has no application redirect endpoint.
-4. Put the public client ID ending in `.apps.googleusercontent.com` in `GOOGLE_CLIENT_ID` in **config.js**, increment the cache version in **sw.js**, commit, and push. Never add a client secret or token. The same public ID is used for everyone visiting this deployment.
-5. Test Connect Google → approve → inspect Open spreadsheet, then sign in on another device to confirm discovery and sync.
-
-Until the owner configures the shared ID, Settings clearly says Google connection is not available and disables Connect Google. Offline tracking and file backups still work. The app never asks ordinary users to register with Google Cloud. A URL cannot substitute for an OAuth client ID.
-
-Access tokens stay in memory and are discarded at expiry/page close. Users reconnect when needed. Saves sync while the page is open, online, and authorized. Disconnect clears the in-memory token; users can revoke the grant through their Google Account's third-party access settings. No refresh-token server or unattended background sync is used.
-
-Google connection errors may be caused by an unauthorized origin, testing-only audience, disabled Sheets/Drive API, missing consent, or a popup/content blocker. Owner diagnostics belong in Cloud Console, not in the end-user setup flow.
-
-### Sheet schema and sync behavior
-
-The `PRs!A:G` header is:
-
-```text
-id | lift | weight_lb | sets | reps | created_at | performed_on
-```
-
-Records have immutable UUIDs and UTC ISO creation timestamps. New entries also store `performed_on` as a local calendar date (`YYYY-MM-DD`), so a chosen date stays the same across time zones. Leave the optional Date field blank to use today on the device at save time. History and PR milestones use the lift date, so backdated entries appear in the right order. Existing six-column sheets are upgraded automatically by adding only the `performed_on` header in G1; legacy entries retain their original timestamp and remain compatible with old backups. Sync reads and validates all remote records, merges them into durable local storage, then appends locally missing IDs. Sheets writes use `RAW`, so lift names cannot execute as formulas. Local changes are saved before network calls. Failed or timed-out syncs can be retried; the next read checks IDs before uploading. Web Locks serialize saves and syncs among tabs on the same origin where supported. Use one tab on older browsers without Web Locks.
-
-Two independent devices can still append the same imported ID concurrently, or a late response after a timeout can cause a duplicate physical row. Reads collapse identical IDs, so app history remains deduplicated; conflicting contents for the same ID stop sync rather than overwriting data. This is an append-only personal log, not a transactional multi-user database. Do not rename the tab/header or edit/delete existing record rows. A missing tab or malformed row stops sync with an error. A completely empty `PRs` tab is initialized automatically. Removing a row from Sheets does not delete it locally; it will be reuploaded. Entry editing/deletion is intentionally outside this minimal version.
-
-New records added during sync schedule another pass. Records imported from Sheets are persisted locally before uploads. Records from different Google connections are not partitioned: connecting another Google account intentionally syncs this device's entire history to that account's sheet. Keep separate browser profiles for separate people's data. The sheet itself remains private unless you share it in Google.
-
-## iCloud Drive backup and restore
-
-Browser storage is **not** synced by iCloud. This PWA cannot access CloudKit or silently write iCloud Drive files. iCloud support here is a portable, manual file workflow:
-
-1. Settings → **Save backup to Files**.
-2. On iPhone/iPad, use the share sheet's **Save to Files**, then choose **iCloud Drive**. On desktop, choose an iCloud Drive folder in the save dialog. Browsers without file sharing/save dialogs download a JSON file; move it to iCloud Drive using Files/Finder.
-3. On another device, Settings → **Restore backup**, browse iCloud Drive, and choose that JSON file.
-
-Restore validates the entire backup, merges UUIDs, and does not duplicate existing entries. It does not replace or erase history. Canceling a save/share does not change records. The web app can report handing off a file but cannot verify that iCloud finished uploading it. Backups contain history only, not OAuth tokens or connection settings. Keep a separate copy before changing devices or clearing browser data. Native automatic iCloud sync would require an Apple developer/CloudKit setup or a native companion app; neither is needed here.
-
-## Settings
-
-Settings opens as its own screen at `#settings`, with a Back to lifts button and browser Back navigation. The lift form, headline, and history are hidden while settings is open.
-
-## Headline
-
-The welcome headline sits inside a shaded panel with a visible Dismiss button. Dismiss it to reclaim space. The choice is remembered on this device. Announcements have a version ID so a future announcement can appear independently of the dismissed welcome message.
+The percentage chart defaults to Recent 1RM for a new installation, with all-time actual and estimated alternatives. An existing saved basis choice remains selected. Changing formula or the recent window recalculates derived values without changing stored lift records. All-time PR badges remain separate. Recent windows are a product preference, not a physiological decay model; estimates assume an effort representative of capacity.
 
 ## Calculations
 
@@ -88,20 +42,22 @@ The welcome headline sits inside a shaded panel with a visible Dismiss button. D
 - Actual and estimated PRs are tracked separately per case-insensitive, trimmed lift name. Changing formula recalculates all estimated milestones. A tied best is not a new PR. The first qualifying entry is a PR.
 - Percentage chart uses the explicitly selected actual or estimated best, at 50–105% in 5% steps. Rounding is to nearest 2.5, 5, or 10 **total** pounds (not each side), with halfway values rounded up. Displayed estimates use one decimal; percentages use the unrounded estimate.
 
-## Storage, privacy, and offline limits
+## Data and backups
 
-History is stored in one atomic localStorage document. Writes merge the latest durable state and fail visibly when storage is unavailable/full; malformed stored records are not silently cleared. Browser persistence is requested after a save but is not guaranteed. Private browsing, clearing site data, OS eviction, changing origin, or removing an installed app can remove local history. A website and its installed PWA can have separate storage on some platforms: restore a backup or connect the same Sheet to reconcile them. History is plaintext on your device, in backups, and in your private Google Sheet, with Google tokens held only in memory. Use device/account security appropriate for your data.
+Records use immutable UUIDs and UTC creation timestamps. The optional lift date is stored as a calendar date, unchanged across time zones; blank means today on the device at save time. Old backups without a lift date continue to work. History and milestones use the lift date. Entries are currently append-only; editing/deletion is outside this version.
 
-The only external script is Google's authorization library, loaded when opening Settings or connecting. It is not cached for offline use. No Google API responses or bearer tokens are cached by the service worker. The app has no remote database other than your chosen Google Sheet and no telemetry. Serve over HTTPS; don't add untrusted scripts. OAuth client IDs belong in browser code; client secrets do not.
+Settings → Save backup to Files exports a JSON file. Choose **iCloud Drive** in Files/Finder if you want that file stored in iCloud. Browsers without a share/save dialog download it; move the file yourself. This is manual backup, not automatic iCloud syncing. The app cannot verify whether iCloud has finished uploading a shared file.
 
-The service worker caches the static app shell. For updates, increment `CACHE` in `sw.js`, deploy all changed files together, then close all tabs/installed windows and reopen after the new worker installs. The old shell remains consistent until the waiting worker activates. Record storage uses a separate key and survives cache upgrades.
+Restore backup validates the complete file and merges records without duplicates or erasing history. Conflicting contents for the same ID stop the import. The internal backup format remains `pr-pocket` version 1 for compatibility with earlier exports; the product is named myPR. Preferences are device-local and aren't included in backups.
 
-### Why no Apps Script endpoint?
+## Storage, privacy, and updates
 
-Apps Script is convenient for scripts operating inside a spreadsheet, but an execute-as-owner web endpoint exposed to anonymous callers would grant outsiders a path to the owner's data unless authorization is implemented correctly. A password embedded in the PWA would not be private. Restricted deployments also add Google login/redirect/CORS considerations for a separate static PWA. This implementation uses Google's supported browser OAuth token model and authenticated Sheets REST calls instead. There is no unauthenticated write endpoint and no proxy owning your spreadsheet credentials.
+History is stored in one atomic localStorage document. Web Locks serialize saves across tabs where supported; use one tab on older browsers. Storage/quota failures are shown, and unreadable stored history is never silently cleared. Browser persistence is requested after saves but is not guaranteed. Clearing browser data, private browsing, device eviction, changing origin, or removing the installed app may remove local history. Keep backups.
 
-Official references: [Google token model](https://developers.google.com/identity/oauth2/web/guides/use-token-model), [OAuth client setup](https://developers.google.com/identity/oauth2/web/guides/get-google-api-clientid), [Sheets scopes](https://developers.google.com/workspace/sheets/api/scopes), [Sheets values API](https://developers.google.com/workspace/sheets/api/guides/values), and [Apps Script web apps](https://developers.google.com/apps-script/guides/web).
+History and backup files are plaintext. There are no external scripts, account connections, remote data writes, or telemetry. Serve over HTTPS. Cloud storage decisions are deferred while the UI is developed.
+
+The service worker caches the app shell. Increment CACHE in sw.js for changes and publish files together. After a new worker installs, close all app windows/tabs and reopen to activate it. Updating the app shell doesn't clear saved history.
 
 ## Verification
 
-`npm test` covers formulas, rounding, invalid values, duplicate/conflicting imports, backup versions, durable merges, quota failures, corrupt storage, and mocked authenticated Sheets reads/writes and expiry. These tests do not prove live Google account consent or iCloud upload. Complete a live roundtrip after configuring your own OAuth client: save a lift → Connect Google → see its row in Sheets → connect the same Google account on a second device → see the same lift; test airplane-mode entry and reconnect as well. For backup, save to iCloud and restore the file on a second device.
+Automated checks cover formulas, rounding, dates, recent-window boundaries, future dates, rep PRs, tie handling, duplicate/conflicting imports, backup compatibility, durable merges, quota failures, and corrupt storage. Test installed offline behavior on the HTTPS deployment. File backup and restore should be tested on the intended phone; iCloud upload is handled by the operating system.
